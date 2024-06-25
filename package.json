@@ -1,0 +1,20 @@
+{
+  "name": "automated-email-sender",
+  "version": "1.0.0",
+  "description": "Since I like doing things from the first principles, here's my plan:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@types/express": "^4.17.21",
+    "express": "^4.19.2"
+  }
+}
