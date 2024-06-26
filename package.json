@@ -4,7 +4,7 @@
   "description": "Since I like doing things from the first principles, here's my plan:",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node ./src/app"
+    "start": "ts-node ./src/app"
   },
   "keywords": [],
   "author": "",
