@@ -6,7 +6,7 @@ Since I like doing things from first principles, here's my plan:
 
 My plan is to make a service that you only have to run once (The best weapon is the one that you only have to fire once, right?)
 
-When you authenticate with your accounts using OAuth (it's the only interaction you have to do), it crawls the last 3 emails you received (why only the last 3? Just to be considerate with the free Llama API). It then categorizes them and sends out appropriate responses. Sounds good?
+When you authenticate with your accounts using OAuth (it's the only interaction you have to do), it starts listening to the inbox and crawls unread emails every 5 seconds. It then categorizes them and sends out appropriate responses. Sounds good?
 
 ## Tasks (in order):
 
