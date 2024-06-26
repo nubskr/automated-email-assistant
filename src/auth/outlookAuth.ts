@@ -1,47 +1,100 @@
+import { Configuration, ConfidentialClientApplication, AuthorizationUrlRequest, AuthorizationCodeRequest } from '@azure/msal-node';
 import { Client } from '@microsoft/microsoft-graph-client';
-import { TokenCredentialAuthenticationProvider, ClientSecretCredential } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials';
+import dotenv from 'dotenv';
 
-const CLIENT_ID = 'your-outlook-client-id';
-const CLIENT_SECRET = 'your-outlook-client-secret';
-const TENANT_ID = 'your-tenant-id';
-const REDIRECT_URI = 'your-redirect-uri';
+dotenv.config();
 
-const credential = new ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+const CLIENT_ID = process.env['OUTLOOK_CLIENT_ID'];
+const CLIENT_SECRET = process.env['OUTLOOK_CLIENT_SECRET'];
+const TENANT_ID = process.env['OUTLOOK_TENANT_ID'];
+const REDIRECT_URI = 'http://localhost:3000/auth/outlook/callback';
 
-const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-  scopes: ['Mail.Read', 'Mail.Send'],
-});
+const AUTHORITY = process.env['OUTLOOK_AUTHORITY'];
 
-const client = Client.initWithMiddleware({ authProvider });
+if (!CLIENT_ID || !CLIENT_SECRET || !TENANT_ID || !REDIRECT_URI || !AUTHORITY) {
+  throw new Error('Missing required environment variables for Outlook API integration.');
+}
+
+const msalConfig: Configuration = {
+  auth: {
+    clientId: CLIENT_ID!,
+    authority: AUTHORITY!,
+    clientSecret: CLIENT_SECRET!,
+  },
+};
+
+const cca = new ConfidentialClientApplication(msalConfig);
+
+const SCOPES = ['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/Mail.ReadWrite'];
 
 async function getOutlookAuthUrl(): Promise<string> {
-  // Implement the logic to generate the auth URL
-  // Usually, it's a URL with the necessary parameters for user consent
-  return `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&response_mode=query&scope=offline_access%20user.read%20mail.read%20mail.send`;
+  const authCodeUrlParameters: AuthorizationUrlRequest = {
+    scopes: SCOPES,
+    redirectUri: REDIRECT_URI,
+  };
+
+  const authUrl = await cca.getAuthCodeUrl(authCodeUrlParameters);
+  return authUrl;
 }
 
-async function getOutlookTokens(code: string): Promise<any> {
-  const response = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      scope: 'offline_access user.read mail.read mail.send',
+async function getOutlookTokens(code: string): Promise<string> {
+  try {
+    if (!code) {
+      throw new Error('Authorization code is missing.');
+    }
+
+    const tokenRequest: AuthorizationCodeRequest = {
       code,
-      redirect_uri: REDIRECT_URI,
-      grant_type: 'authorization_code',
-      client_secret: CLIENT_SECRET,
-    }),
+      scopes: SCOPES,
+      redirectUri: REDIRECT_URI,
+    };
+
+    const response = await cca.acquireTokenByCode(tokenRequest);
+    return response?.accessToken || '';
+  } catch (error) {
+    console.error('Error retrieving access token:', error);
+    throw error;
+  }
+}
+
+async function getOutlookEmails(accessToken: string): Promise<any[]> {
+  const client = Client.init({
+    authProvider: async (done) => {
+      try {
+        if (!accessToken) {
+          throw new Error('Access token not found.');
+        }
+        done(null, accessToken);
+      } catch (error) {
+        console.error('Error setting auth provider:', error);
+        done(error, null);
+      }
+    },
   });
 
-  const tokens = await response.json();
-  credential.token = tokens;
-  return tokens;
-}
+  try {
+    const messages = await client.api('/me/mailFolders/inbox/messages')
+      .top(10)
+      .filter('isRead eq false')
+      .select('id,from,toRecipients,body')
+      .get();
 
-async function getOutlookEmails(): Promise<any> {
-  const messages = await client.api('/me/messages').get();
-  return messages.value;
+    const emails = messages.value.map((message: any) => ({
+      id: message.id,
+      from: message.from.emailAddress.address,
+      to: message.toRecipients.map((to: any) => to.emailAddress.address).join(', '),
+      body: message.body.content,
+    }));
+
+    for (const email of emails) {
+      await client.api(`/me/messages/${email.id}`).update({ isRead: true });
+    }
+
+    return emails;
+  } catch (error) {
+    console.error('Error fetching emails:', error);
+    throw error;
+  }
 }
 
 export { getOutlookAuthUrl, getOutlookTokens, getOutlookEmails };

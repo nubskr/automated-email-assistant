@@ -32,7 +32,7 @@ async function getGmailTokens(code: string): Promise<any> {
 async function getGmailEmails(): Promise<any[]> {
   const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
 
-  const res = await gmail.users.messages.list({ userId: 'me', maxResults: 10, q: 'is:unread' });
+  const res = await gmail.users.messages.list({ userId: 'me', maxResults: 100, q: 'is:unread' });
   const messages = res.data.messages || [];
 
   const emails = [];

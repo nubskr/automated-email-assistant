@@ -10,6 +10,7 @@ import { getOutlookAuthUrl, getOutlookTokens, getOutlookEmails } from './auth/ou
 import './jobs/categorizeEmail';
 import './jobs/generateResponse';
 import './jobs/sendReply';
+import { access } from 'fs/promises';
 
 
 categorizeWorker.on('completed', (job) => {
@@ -46,6 +47,7 @@ app.get('/auth/gmail', async (req, res) => {
   res.redirect(url);
 });
 
+
 app.get('/auth/gmail/callback', async (req, res) => {
   const code = req.query.code as string;
   try {
@@ -53,19 +55,48 @@ app.get('/auth/gmail/callback', async (req, res) => {
     
     const newEmails = await getGmailEmails();
       newEmails.forEach((email: any) => {
-        const relevantEmails = {
-          id: email.id,
-          from: email.from,
-          to: email.to,
-          body: email.body,
-          category: null,
-          response: null
-        }
-        catergorizeQueue.add('categorize', relevantEmails);
+        console.log(email.from);
+        // const relevantEmails = {
+        //   id: email.id,
+        //   from: email.from,
+        //   to: email.to,
+        //   body: email.body,
+        //   category: null,
+        //   response: null
+        // }
+        // catergorizeQueue.add('categorize', relevantEmails);
       });
     // res.send('Gmail authentication successful and email polling has started.');
+    res.redirect('/'); // Redirect to the homepage or another route
+  } catch (error) {
+    console.error('Error retrieving access token:', error);
+    res.status(500).send('Error retrieving access token');
+  }
+});
 
+app.get('/auth/outlook', async (req, res) => {
+  const url = await getOutlookAuthUrl();
+  res.redirect(url);
+});
 
+app.get('/auth/outlook/callback', async (req, res) => {
+  const code = req.query.code as string;
+  console.log(`auth code is ${code}`);
+  try {
+    const accessToken = await getOutlookTokens(code);
+    const newEmails = await getOutlookEmails(accessToken);
+    newEmails.forEach((email: any) => {
+      console.log(email.to);
+      // const relevantEmails = {
+      //   id: email.id,
+      //   from: email.from,
+      //   to: email.to,
+      //   body: email.body,
+      //   category: null,
+      //   response: null
+      // }
+      // catergorizeQueue.add('categorize', relevantEmails);
+    });
     res.redirect('/'); // Redirect to the homepage or another route
   } catch (error) {
     console.error('Error retrieving access token:', error);
