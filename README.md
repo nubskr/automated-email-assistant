@@ -1,45 +1,70 @@
 # Plan
 
-Since I like doing things from the first principles, here's my plan:
+Since I like doing things from first principles, here's my plan:
 
-Note: I have exhausted all my openai credits, so I'll use llama 80b from groq api since its free
+*Note: I have exhausted all my OpenAI credits, so I'll use Llama 80B from the Groq API since it's free.*
 
-So my plan is to make a service that you only have to run once (The best weapon is the one that you only have to fire once ?)
+My plan is to make a service that you only have to run once (The best weapon is the one that you only have to fire once, right?)
 
-when you auth with your acounts with oauth(its the only interaction you have to do), it crawls  the last 3 emails you received (why only last 3 ? : just to be good on the free llama api),it then categorises them and sends out appropriate responses, sounds good.
+When you authenticate with your accounts using OAuth (it's the only interaction you have to do), it crawls the last 3 emails you received (why only the last 3? Just to be considerate with the free Llama API). It then categorizes them and sends out appropriate responses. Sounds good?
 
-# Tasks(in order):
+## Tasks (in order):
 
-- Get oauth setup for Gmail
-- Get oauth setup for Outlook
-- Get mails out of Gmail
-- Get mails out of Outlook
+1. Get OAuth setup for Gmail
+2. Get OAuth setup for Outlook
+3. Get emails out of Gmail
+4. Get emails out of Outlook
 
-after this, we can centralize the process to process the emails, since they're just emails irrespective of whether they came from gmail or outlook, they can be processed by the same thing
+After this, we can centralize the process to handle the emails. Since they're just emails, irrespective of whether they came from Gmail or Outlook, they can be processed by the same system.
 
-let's call it:
+Let's call it:
 
-eval_system, this good boy uses llama80B and takes the emails and divides them into each category: Interested, not Interested, more information
+**eval_system**, this good boy uses Llama 80B to take the emails and divide them into categories: Interested, Not Interested, More Information.
 
-once we have everything divided into categories,we can again use llama80B to make responses from them
+Once we have everything divided into categories, we can again use Llama 80B to generate responses.
 
-once we have the responses, I guess we have to do something different to send mails from both gmail and outlook accounts ?? idk we'll see
+Once we have the responses, we'll have to figure out how to send emails from both Gmail and Outlook accounts. We'll see about that later.
 
-At this point I'm assuming that we have done the auth using oauth and have access to emails
+At this point, I'm assuming we have done the OAuth authentication and have access to the emails.
 
-so we make sure that we have auth done at this point and have access to the emails in some nice format like json.
+So, we ensure that we have authentication done and have access to the emails in a nice format like JSON.
 
-Okay, so we need to schedule jobs using BullMQ:
+## Job Scheduling with BullMQ:
 
-Lets catergorise the jobs:
+Let's categorize the jobs:
 
-- Categorization of emails with llama api , we schedule them one by one!
-- Getting the appropriate reply of emails with llama api
-- Sending the reply of emails using ???? (we'll see)
+1. Categorization of emails with the Llama API, scheduled one by one.
+2. Generating the appropriate replies to emails with the Llama API.
+3. Sending the replies to emails using their respective apis.
 
-This is how it goes:
+### Workflow:
 
-when we get the emails, they all get formatted in a nice json and gets pushed to do the first category of job (Categorisation) , when some email gets categorized, it gets pushed into the second category and when we have the response to the email, we push it into the third category to be sent back, sounds good.
+When we get the emails, they all get formatted into a nice JSON and get pushed to do the first category of jobs (Categorization). When an email gets categorized, it gets pushed into the second category. Once we have the response to the email, we push it into the third category to be sent back. Sounds good?
 
-Lets implement it now
+Let's implement it now.
 
+## Running instructions:
+
+First, make sure you have your environment variables set up. Create a `.env` file in the root of your project and fill it with your credentials:
+
+```bash
+GROQ_API_KEY='your_groq_api_key_here'
+GMAIL_CLIENT_ID='your_gmail_client_id_here'
+GMAIL_CLIENT_SECRET='your_gmail_client_secret_here'
+OUTLOOK_CLIENT_ID='your_outlook_client_id_here'
+OUTLOOK_CLIENT_SECRET='your_outlook_client_secret_here'
+OUTLOOK_TENANT_ID='your_outlook_tenant_id_here'
+OUTLOOK_AUTHORITY='your_outlook_authority_here'
+```
+
+Not just install the dependencies using:
+
+```bash
+npm install
+```
+
+And start with:
+
+```bash
+npm run
+```

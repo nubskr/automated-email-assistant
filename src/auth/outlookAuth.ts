@@ -27,6 +27,8 @@ const cca = new ConfidentialClientApplication(msalConfig);
 
 const SCOPES = ['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/Mail.ReadWrite'];
 
+let accessToken: string = '';
+
 async function getOutlookAuthUrl(): Promise<string> {
   const authCodeUrlParameters: AuthorizationUrlRequest = {
     scopes: SCOPES,
@@ -50,13 +52,17 @@ async function getOutlookTokens(code: string): Promise<string> {
     };
 
     const response = await cca.acquireTokenByCode(tokenRequest);
-    return response?.accessToken || '';
+
+    if (response) {
+      accessToken = response.accessToken;
+    }
+
+    return accessToken;
   } catch (error) {
     console.error('Error retrieving access token:', error);
     throw error;
   }
 }
-
 async function getOutlookEmails(accessToken: string): Promise<any[]> {
   const client = Client.init({
     authProvider: async (done) => {
@@ -76,13 +82,14 @@ async function getOutlookEmails(accessToken: string): Promise<any[]> {
     const messages = await client.api('/me/mailFolders/inbox/messages')
       .top(10)
       .filter('isRead eq false')
-      .select('id,from,toRecipients,body')
+      .select('id,from,toRecipients,body,subject')
       .get();
 
     const emails = messages.value.map((message: any) => ({
       id: message.id,
       from: message.from.emailAddress.address,
       to: message.toRecipients.map((to: any) => to.emailAddress.address).join(', '),
+      subject: message.subject,
       body: message.body.content,
     }));
 
@@ -97,4 +104,47 @@ async function getOutlookEmails(accessToken: string): Promise<any[]> {
   }
 }
 
-export { getOutlookAuthUrl, getOutlookTokens, getOutlookEmails };
+async function sendOutlookReply(accessToken: string, to: string, subject: string, body: string, inReplyTo: string): Promise<void> {
+  const client = Client.init({
+    authProvider: async (done) => {
+      try {
+        if (!accessToken) {
+          throw new Error('Access token not found.');
+        }
+        done(null, accessToken);
+      } catch (error) {
+        console.error('Error setting auth provider:', error);
+        done(error, null);
+      }
+    },
+  });
+
+  const replyMessage = {
+    message: {
+      subject: `Re: ${subject}`,
+      body: {
+        contentType: 'Text',
+        content: body,
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: to,
+          },
+        },
+      ],
+      conversationId: inReplyTo,
+    },
+    comment: 'Replying to your email',
+  };
+
+  try {
+    await client.api(`/me/messages/${inReplyTo}/reply`).post(replyMessage);
+  } catch (error) {
+    console.error('Error sending reply:', error);
+    throw error;
+  }
+}
+
+
+export { getOutlookAuthUrl, getOutlookTokens, getOutlookEmails, sendOutlookReply };

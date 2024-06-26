@@ -1,6 +1,7 @@
 import { Job, Queue, Worker } from 'bullmq';
 import { Email } from '../types/email';
 import { responseApi , categorizeApi } from '../controllers/apiProcess';
+import { addLabelToEmail } from '../auth/gmailAuth';
 
 const connectionOptions = {
     host: '0.0.0.0',
@@ -15,7 +16,8 @@ async function categorizeWorker(job: Job<Email>){
         const email = job.data;
     
         email.category = await categorizeApi(email.body);
-    
+        
+        await addLabelToEmail(email.id,email.category); 
         await responseQueue.add('generateResponse',email);
     }
     catch(err){
